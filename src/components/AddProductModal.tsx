@@ -1,0 +1,392 @@
+import React, {useState, useEffect, useRef} from "react";
+import {Modal, Button, Form, Alert, Row, Col} from "react-bootstrap";
+import {FaPlus, FaTrash} from "react-icons/fa";
+import {fetchWithAuth} from "../static/api";
+import AddSupplierModal from "./AddSupplierModal";
+
+interface AddProductModalProps {
+    onProductAdded: () => void;
+}
+
+// Dichiarazione generica: formData è un Record di chiave string e valore string
+const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
+    const [show, setShow] = useState(false);
+    const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
+    const [supplierMsg, setSupplierMsg] = useState<string | null>(null);
+
+    // Qui il formData è un Record<string, string>
+    const [formData, setFormData] = useState<Record<string, string>>({
+        name: "",
+        description: "",
+        category: "",
+        subcategory: "",
+        purchasePrice: "",
+        salePrice: "",
+        vatRate: "",
+        barcode: "",
+        imageUrl: "",
+        weight: "",
+        width: "",
+        height: "",
+        depth: "",
+        volume: "",
+        stockQuantity: "",
+        supplierId: "",
+    });
+
+    // Stato per le immagini selezionate
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+        fetchSuppliers();
+    }, []);
+
+    const fetchSuppliers = async () => {
+        try {
+            const data = await fetchWithAuth<{ id: number; name: string }[]>("/api/suppliers", "GET");
+            setSuppliers(data);
+        } catch (error) {
+            console.error("Errore nel caricamento dei fornitori", error);
+        }
+    };
+
+    const handleShow = () => setShow(true);
+    const handleClose = () => setShow(false);
+
+    // Gestione dei campi testuali
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
+        setFormData({...formData, [e.target.name]: e.target.value});
+    };
+
+    // Quando l'utente clicca sul "+" per selezionare file
+    const handleImageButtonClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) { // Controlla se e.target.files non è null
+            setSelectedImages((prevImages) => [...prevImages, ...Array.from(e.target.files || [])]);
+        }
+    };
+
+    const handleRemoveImage = (index: number) => {
+        setSelectedImages((prevImages) => prevImages.filter((_, i) => i !== index));
+    };
+
+    // Callback dal modal Fornitore
+    const handleSupplierAdded = (msg: string, success: boolean) => {
+        setSupplierMsg(msg);
+        if (success) {
+            fetchSuppliers();
+            setFormData((prev) => ({...prev, supplierId: ""}));
+        }
+        setTimeout(() => setSupplierMsg(null), 3000);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!formData.supplierId) {
+            alert("Seleziona un fornitore valido");
+            return;
+        }
+
+        // Costruisci l'oggetto ProductDTO che rispecchia i campi necessari
+        const productDTO = {
+            name: formData.name,
+            description: formData.description,
+            category: formData.category,
+            subcategory: formData.subcategory,
+            purchasePrice: parseFloat(formData.purchasePrice) || 0,
+            salePrice: parseFloat(formData.salePrice) || 0,
+            vatRate: parseFloat(formData.vatRate) || 0,
+            barcode: formData.barcode,
+            imageUrl: formData.imageUrl, // se usi ancora questo campo
+            weight: parseFloat(formData.weight) || 0,
+            width: parseFloat(formData.width) || 0,
+            height: parseFloat(formData.height) || 0,
+            depth: parseFloat(formData.depth) || 0,
+            volume: parseFloat(formData.volume) || 0,
+            stockQuantity: parseInt(formData.stockQuantity, 10) || 0,
+            supplierId: parseInt(formData.supplierId, 10),
+        };
+
+        // Creiamo un FormData multipart
+        const formDataToSend = new FormData();
+
+        // Aggiungiamo l'intero productDTO come JSON nella parte "product"
+        const productBlob = new Blob([JSON.stringify(productDTO)], {type: "application/json"});
+        formDataToSend.append("product", productBlob);
+
+        // Aggiungiamo le immagini (selezionate)
+        selectedImages.forEach((file) => {
+            formDataToSend.append("images", file);
+        });
+
+        try {
+            // fetchWithAuth deve riconoscere che il body è FormData e non impostare "Content-Type: application/json"
+            await fetchWithAuth("/api/product", "POST", formDataToSend);
+
+            onProductAdded();
+            handleClose();
+        } catch (error) {
+            console.error("Errore nell'aggiunta del prodotto", error);
+        }
+    };
+
+    return (
+        <>
+            <Button variant="success" className="mb-3" onClick={handleShow}>
+                <FaPlus/> Aggiungi Prodotto
+            </Button>
+
+            <Modal show={show} onHide={handleClose} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Aggiungi Prodotto</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form id="productForm" onSubmit={handleSubmit}>
+                        {/* Primo gruppo: Nome, Categoria, Sotto Categoria */}
+                        <Row className="mb-3">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Nome</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Categoria</Form.Label>
+                                    <Form.Select
+                                        name="category"
+                                        value={formData.category}
+                                        onChange={handleChange}
+                                        required
+                                    >
+                                        <option value="">Seleziona una categoria</option>
+                                        <option value="pc">PC</option>
+                                        <option value="smartphone">Smartphone</option>
+                                        <option value="stampante">Stampante</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        <Row className="mb-3">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Sotto Categoria</Form.Label>
+                                    <Form.Select
+                                        name="subcategory"
+                                        value={formData.subcategory}
+                                        onChange={handleChange}
+
+                                    >
+                                        <option value="">Seleziona una sotto-categoria</option>
+                                        <option value="gaming">Gaming</option>
+                                        <option value="ufficio">Ufficio</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Prezzo Acquisto</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="purchasePrice"
+                                        value={formData.purchasePrice}
+                                        onChange={handleChange}
+
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        {/* Secondo gruppo: Prezzo Vendita e Aliquota IVA */}
+                        <Row className="mb-3">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Prezzo Vendita</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="salePrice"
+                                        value={formData.salePrice}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Aliquota IVA</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="vatRate"
+                                        value={formData.vatRate}
+                                        onChange={handleChange}
+
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        {/* Separatore: Misure */}
+                        <h5 className="mt-4 mb-2">Misure</h5>
+                        <Row className="mb-3">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Peso (kg)</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="weight"
+                                        value={formData.weight}
+                                        onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Altezza (cm)</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="height"
+                                        value={formData.height}
+                                        onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        <Row className="mb-3">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Profondità (cm)</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="depth"
+                                        value={formData.depth}
+                                        onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Volume (cm³)</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="volume"
+                                        value={formData.volume}
+                                        onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        {/* Separatore: Magazzino */}
+                        <h5 className="mt-4 mb-2">Magazzino</h5>
+                        <Row className="mb-3">
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Quantità</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        name="stockQuantity"
+                                        value={formData.stockQuantity}
+                                        onChange={handleChange}
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label>Fornitore</Form.Label>
+                                    <Form.Select
+                                        name="supplierId"
+                                        value={formData.supplierId}
+                                        onChange={handleChange}
+                                        required
+                                    >
+                                        <option value="">Seleziona un fornitore</option>
+                                        {suppliers.map((supplier) => (
+                                            <option key={supplier.id} value={supplier.id}>
+                                                {supplier.name}
+                                            </option>
+                                        ))}
+                                    </Form.Select>
+                                    {supplierMsg && <Alert variant="info" className="mt-2">{supplierMsg}</Alert>}
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        {/* Separatore: Descrizione */}
+                        <h5 className="mt-4 mb-2">Descrizione</h5>
+                        <Form.Group className="mb-3">
+                            <Form.Control
+                                as="textarea"
+                                rows={4}
+                                name="description"
+                                value={formData.description}
+                                onChange={handleChange}
+                            />
+                        </Form.Group>
+
+                        {/* Immagini */}
+                        <div className="mb-3">
+                            <Form.Label>Immagini</Form.Label>
+                            <div>
+                                <Button variant="outline-secondary" onClick={handleImageButtonClick}>
+                                    <FaPlus/> Aggiungi Immagini
+                                </Button>
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    ref={fileInputRef}
+                                    style={{display: "none"}}
+                                    onChange={handleImageChange}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Mostra i file selezionati */}
+                        {selectedImages.length > 0 && (
+                            <div className="mt-2">
+                                <strong>File selezionati:</strong>
+                                <ul className="list-group mt-2">
+                                    {selectedImages.map((file, index) => (
+                                        <li key={index}
+                                            className="list-group-item d-flex justify-content-between align-items-center">
+                                            {file.name}
+                                            <FaTrash
+                                                style={{cursor: "pointer", color: "red"}}
+                                                onClick={() => handleRemoveImage(index)}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </Form>
+
+                    <div className="d-flex justify-content-end align-items-center mt-3">
+                        <Button variant="primary" type="submit" form="productForm">
+                            Aggiungi
+                        </Button>
+                        <div className="ms-2">
+                            <AddSupplierModal onSupplierAdded={handleSupplierAdded}/>
+                        </div>
+                    </div>
+                </Modal.Body>
+            </Modal>
+        </>
+    );
+};
+
+export default AddProductModal;
