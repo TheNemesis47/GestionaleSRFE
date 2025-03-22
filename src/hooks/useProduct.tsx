@@ -3,17 +3,31 @@ import {fetchWithAuth} from "../static/api";
 
 // Definizione del tipo per i prodotti
 interface Product {
-    id: number;
+    id: number
     name: string;
+    description: string;
     category: string;
+    subcategory: string;
     purchasePrice: number;
     salePrice: number;
+    vatRate: number;
+    barcode: string;
+    weight: number;
+    width: number;
+    height: number;
+    depth: number;
+    volume: number;
     stockQuantity: number;
+    supplierId: number;
+    shopId: number;
+    createdAt: string;
+    updatedAt: string;
+    images: string[];
+    tags?: string[];
 }
 
-// Hook personalizzato per ottenere i prodotti
 const useProducts = () => {
-    const [products, setProducts] = useState<Product[]>([]); // Inizializza come array vuoto
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +40,7 @@ const useProducts = () => {
                 throw new Error("I dati ricevuti non sono un array.");
             }
 
-            setProducts(data);
+            setProducts(data); // Salva i prodotti nello stato
         } catch (err) {
             setError("Errore nel caricamento dei prodotti");
             console.error(err);
@@ -39,7 +53,9 @@ const useProducts = () => {
         fetchProducts();
     }, []);
 
-    return {products, loading, error, fetchProducts};
+    return { products, setProducts, loading, error, fetchProducts }; // <== AGGIUNTO setProducts
 };
 
+
+export type {Product};
 export default useProducts;

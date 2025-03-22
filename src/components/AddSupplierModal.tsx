@@ -30,6 +30,7 @@ const AddSupplierModal = ({onSupplierAdded}: AddSupplierModalProps) => {
         email: "",
         pec: "",
         notes: "",
+        products: [],
     });
 
     const handleShow = () => {
@@ -67,6 +68,7 @@ const AddSupplierModal = ({onSupplierAdded}: AddSupplierModalProps) => {
                 email: "",
                 pec: "",
                 notes: "",
+                products: [],
             });
             setTimeout(() => {
                 handleClose();

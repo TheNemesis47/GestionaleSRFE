@@ -1,0 +1,8 @@
+.icon-action {
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.icon-action:hover {
+    color: #1890ff;
+}

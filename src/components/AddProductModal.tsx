@@ -1,20 +1,20 @@
-import React, {useState, useEffect, useRef} from "react";
-import {Modal, Button, Form, Alert, Row, Col} from "react-bootstrap";
-import {FaPlus, FaTrash} from "react-icons/fa";
-import {fetchWithAuth} from "../static/api";
+import React, { useState, useEffect } from "react";
+import { Modal, Button, Form, Alert, Row, Col } from "react-bootstrap";
+import { FaPlus } from "react-icons/fa";
+import { fetchWithAuth } from "../static/api";
 import AddSupplierModal from "./AddSupplierModal";
+import ImageUploader from "./ImageUploader";
 
 interface AddProductModalProps {
     onProductAdded: () => void;
 }
 
-// Dichiarazione generica: formData è un Record di chiave string e valore string
-const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
+const AddProductModal = ({ onProductAdded }: AddProductModalProps) => {
     const [show, setShow] = useState(false);
     const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
     const [supplierMsg, setSupplierMsg] = useState<string | null>(null);
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
 
-    // Qui il formData è un Record<string, string>
     const [formData, setFormData] = useState<Record<string, string>>({
         name: "",
         description: "",
@@ -24,7 +24,6 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
         salePrice: "",
         vatRate: "",
         barcode: "",
-        imageUrl: "",
         weight: "",
         width: "",
         height: "",
@@ -33,10 +32,6 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
         stockQuantity: "",
         supplierId: "",
     });
-
-    // Stato per le immagini selezionate
-    const [selectedImages, setSelectedImages] = useState<File[]>([]);
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         fetchSuppliers();
@@ -54,34 +49,15 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
     const handleShow = () => setShow(true);
     const handleClose = () => setShow(false);
 
-    // Gestione dei campi testuali
-    const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-    ) => {
-        setFormData({...formData, [e.target.name]: e.target.value});
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // Quando l'utente clicca sul "+" per selezionare file
-    const handleImageButtonClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) { // Controlla se e.target.files non è null
-            setSelectedImages((prevImages) => [...prevImages, ...Array.from(e.target.files || [])]);
-        }
-    };
-
-    const handleRemoveImage = (index: number) => {
-        setSelectedImages((prevImages) => prevImages.filter((_, i) => i !== index));
-    };
-
-    // Callback dal modal Fornitore
     const handleSupplierAdded = (msg: string, success: boolean) => {
         setSupplierMsg(msg);
         if (success) {
             fetchSuppliers();
-            setFormData((prev) => ({...prev, supplierId: ""}));
+            setFormData((prev) => ({ ...prev, supplierId: "" }));
         }
         setTimeout(() => setSupplierMsg(null), 3000);
     };
@@ -94,7 +70,6 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
             return;
         }
 
-        // Costruisci l'oggetto ProductDTO che rispecchia i campi necessari
         const productDTO = {
             name: formData.name,
             description: formData.description,
@@ -104,7 +79,6 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
             salePrice: parseFloat(formData.salePrice) || 0,
             vatRate: parseFloat(formData.vatRate) || 0,
             barcode: formData.barcode,
-            imageUrl: formData.imageUrl, // se usi ancora questo campo
             weight: parseFloat(formData.weight) || 0,
             width: parseFloat(formData.width) || 0,
             height: parseFloat(formData.height) || 0,
@@ -114,22 +88,16 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
             supplierId: parseInt(formData.supplierId, 10),
         };
 
-        // Creiamo un FormData multipart
         const formDataToSend = new FormData();
-
-        // Aggiungiamo l'intero productDTO come JSON nella parte "product"
-        const productBlob = new Blob([JSON.stringify(productDTO)], {type: "application/json"});
+        const productBlob = new Blob([JSON.stringify(productDTO)], { type: "application/json" });
         formDataToSend.append("product", productBlob);
 
-        // Aggiungiamo le immagini (selezionate)
         selectedImages.forEach((file) => {
             formDataToSend.append("images", file);
         });
 
         try {
-            // fetchWithAuth deve riconoscere che il body è FormData e non impostare "Content-Type: application/json"
             await fetchWithAuth("/api/product", "POST", formDataToSend);
-
             onProductAdded();
             handleClose();
         } catch (error) {
@@ -148,8 +116,9 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
                     <Modal.Title>Aggiungi Prodotto</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
+                    {supplierMsg && <Alert variant="info" className="mt-2">{supplierMsg}</Alert>}
+
                     <Form id="productForm" onSubmit={handleSubmit}>
-                        {/* Primo gruppo: Nome, Categoria, Sotto Categoria */}
                         <Row className="mb-3">
                             <Col md={6}>
                                 <Form.Group>
@@ -166,12 +135,7 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label>Categoria</Form.Label>
-                                    <Form.Select
-                                        name="category"
-                                        value={formData.category}
-                                        onChange={handleChange}
-                                        required
-                                    >
+                                    <Form.Select name="category" value={formData.category} onChange={handleChange} required>
                                         <option value="">Seleziona una categoria</option>
                                         <option value="pc">PC</option>
                                         <option value="smartphone">Smartphone</option>
@@ -320,7 +284,6 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
                                             </option>
                                         ))}
                                     </Form.Select>
-                                    {supplierMsg && <Alert variant="info" className="mt-2">{supplierMsg}</Alert>}
                                 </Form.Group>
                             </Col>
                         </Row>
@@ -337,51 +300,14 @@ const AddProductModal = ({onProductAdded}: AddProductModalProps) => {
                             />
                         </Form.Group>
 
-                        {/* Immagini */}
-                        <div className="mb-3">
-                            <Form.Label>Immagini</Form.Label>
-                            <div>
-                                <Button variant="outline-secondary" onClick={handleImageButtonClick}>
-                                    <FaPlus/> Aggiungi Immagini
-                                </Button>
-                                <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    ref={fileInputRef}
-                                    style={{display: "none"}}
-                                    onChange={handleImageChange}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Mostra i file selezionati */}
-                        {selectedImages.length > 0 && (
-                            <div className="mt-2">
-                                <strong>File selezionati:</strong>
-                                <ul className="list-group mt-2">
-                                    {selectedImages.map((file, index) => (
-                                        <li key={index}
-                                            className="list-group-item d-flex justify-content-between align-items-center">
-                                            {file.name}
-                                            <FaTrash
-                                                style={{cursor: "pointer", color: "red"}}
-                                                onClick={() => handleRemoveImage(index)}
-                                            />
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                        <ImageUploader selectedImages={selectedImages} setSelectedImages={setSelectedImages} />
                     </Form>
 
-                    <div className="d-flex justify-content-end align-items-center mt-3">
+                    <div className="mt-3">
                         <Button variant="primary" type="submit" form="productForm">
                             Aggiungi
                         </Button>
-                        <div className="ms-2">
-                            <AddSupplierModal onSupplierAdded={handleSupplierAdded}/>
-                        </div>
+                        <AddSupplierModal onSupplierAdded={handleSupplierAdded} />
                     </div>
                 </Modal.Body>
             </Modal>
