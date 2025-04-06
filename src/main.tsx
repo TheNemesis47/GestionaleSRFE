@@ -20,6 +20,9 @@ const router = createBrowserRouter([
         element: <PrivateRoute/>,
         children: [{path: "", element: <Dashboard/>}],
     },
+    {
+        path: "/", element: <PrivateRoute/>, children: [{path: "", element: <Dashboard/>}],
+    },
     {path: "*", element: <NotFoundPage/>}, // Pagina 404
 ]);
 
