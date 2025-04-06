@@ -12,6 +12,7 @@ interface AddProductModalProps {
 const AddProductModal = ({ onProductAdded }: AddProductModalProps) => {
     const [show, setShow] = useState(false);
     const [suppliers, setSuppliers] = useState<{ id: number; name: string }[]>([]);
+    const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
     const [supplierMsg, setSupplierMsg] = useState<string | null>(null);
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
 
@@ -35,6 +36,7 @@ const AddProductModal = ({ onProductAdded }: AddProductModalProps) => {
 
     useEffect(() => {
         fetchSuppliers();
+        fetchCategories();
     }, []);
 
     const fetchSuppliers = async () => {
@@ -43,6 +45,15 @@ const AddProductModal = ({ onProductAdded }: AddProductModalProps) => {
             setSuppliers(data);
         } catch (error) {
             console.error("Errore nel caricamento dei fornitori", error);
+        }
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const data = await fetchWithAuth<{ id: number; name: string }[]>("/api/category", "GET");
+            setCategories(data);
+        } catch (error) {
+            console.error("Errore nel caricamento delle categoria", error);
         }
     };
 
@@ -135,11 +146,18 @@ const AddProductModal = ({ onProductAdded }: AddProductModalProps) => {
                             <Col md={6}>
                                 <Form.Group>
                                     <Form.Label>Categoria</Form.Label>
-                                    <Form.Select name="category" value={formData.category} onChange={handleChange} required>
-                                        <option value="">Seleziona una categoria</option>
-                                        <option value="pc">PC</option>
-                                        <option value="smartphone">Smartphone</option>
-                                        <option value="stampante">Stampante</option>
+                                    <Form.Select
+                                        name="category"
+                                        value={formData.category}
+                                        onChange={handleChange}
+                                        required
+                                    >
+                                        <option value="">Seleziona una Categoria</option>
+                                        {categories.map((category) => (
+                                            <option key={category.id} value={category.name}>
+                                                {category.name}
+                                            </option>
+                                        ))}
                                     </Form.Select>
                                 </Form.Group>
                             </Col>

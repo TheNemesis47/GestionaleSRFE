@@ -3,28 +3,33 @@ import {fetchWithAuth} from "../static/api";
 
 // Definizione del tipo per i prodotti
 interface Product {
-    id: number
+    id: number;
     name: string;
-    description: string;
-    category: string;
-    subcategory: string;
-    purchasePrice: number;
+    categoryName: string;
+    supplierName: string | null;
     salePrice: number;
-    vatRate: number;
-    barcode: string;
-    weight: number;
-    width: number;
-    height: number;
-    depth: number;
-    volume: number;
-    stockQuantity: number;
-    supplierId: number;
-    shopId: number;
-    createdAt: string;
-    updatedAt: string;
-    images: string[];
-    tags?: string[];
+    additionalInfo: {
+        purchasePrice: number;
+        vatRate: number;
+        stockQuantity: number;
+        barcode: string;
+        tag?: string;
+        volume: number;
+        description?: string;
+        categoryDescription?: string; // <-- nuovo
+        createdAt?: string; // <-- nuovo
+        updatedAt?: string;
+        dimensions: {
+            weight: number;
+            width: number;
+            height: number;
+            depth: number;
+        };
+        images: string[];
+    };
 }
+
+
 
 const useProducts = () => {
     const [products, setProducts] = useState<Product[]>([]);
